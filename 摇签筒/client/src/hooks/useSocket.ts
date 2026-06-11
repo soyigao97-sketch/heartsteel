@@ -7,7 +7,7 @@ export function getSocket(): Socket | null {
   if (!socket) {
     const token = localStorage.getItem('accessToken')
     if (!token) return null
-    const serverUrl = import.meta.env.VITE_API_URL || ''
+    const serverUrl = ''
     socket = io(serverUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],

@@ -1,0 +1,12 @@
+# Railway 部署配置
+[phases.setup]
+nixPkgs = ["nodejs", "openssl"]
+
+[phases.install]
+cmds = ["cd server && npm install"]
+
+[phases.build]
+cmds = ["cd server && npx prisma generate && npm run build"]
+
+[start]
+cmd = "cd server && npx prisma db push && node dist/index.js"

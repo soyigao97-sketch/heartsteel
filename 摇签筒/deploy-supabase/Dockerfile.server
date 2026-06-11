@@ -1,0 +1,28 @@
+# 后端 Dockerfile — 用于 Railway / Fly.io / Render 部署
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Prisma 需要 openssl
+RUN apk add --no-cache openssl
+
+# 复制依赖文件
+COPY server/package.json server/package-lock.json ./
+RUN npm ci
+
+# 复制 Prisma schema
+COPY server/prisma ./prisma
+RUN npx prisma generate
+
+# 复制源码
+COPY server/src ./src
+COPY server/tsconfig.json ./
+
+# 构建
+RUN npm run build
+
+# 暴露端口
+EXPOSE 3001
+
+# 启动命令：先推送数据库，再启动服务
+CMD npx prisma db push && node dist/index.js

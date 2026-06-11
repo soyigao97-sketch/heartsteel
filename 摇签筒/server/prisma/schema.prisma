@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 用户 ==========
+model User {
+  id            Int       @id @default(autoincrement())
+  phone         String    @unique @db.VarChar(20)
+  email         String?   @unique @db.VarChar(100)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  nickname      String    @db.VarChar(50)
+  avatarUrl     String?   @map("avatar_url")
+  gameRegion    String?   @map("game_region") @db.VarChar(50)
+  gameName      String?   @map("game_name") @db.VarChar(50)
+  location      String?   @db.VarChar(50)
+  wechatId      String?   @map("wechat_id") @db.VarChar(50)
+  heartLayer    Int       @default(0) @map("heart_layer")
+  totalSignDays Int       @default(0) @map("total_sign_days")
+  isAdmin       Boolean   @default(false) @map("is_admin")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  dailyLimits     DailyLimit[]
+  layerLogs       LayerLog[]
+  records         Record[]
+  teamRequests    TeamRequest[]
+  dynamics        Dynamic[]
+  sentMessages    Message[]
+  likes           Like[]
+  comments        Comment[]
+  refreshTokens   RefreshToken[]
+  sentReports     Report[]         @relation("Reporter")
+  chatMembers     ChatRoomMember[]
+  followers       Follow[]         @relation("Following")
+  following       Follow[]         @relation("Follower")
+  teamApplications TeamApplication[] @relation("TeamAppApplicant")
+
+  @@map("users")
+}
+
+// ========== 每日上限追踪 ==========
+model DailyLimit {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  date        DateTime @db.Date
+  signIn      Boolean  @default(false) @map("sign_in")
+  dynamic     Boolean  @default(false)
+  teamPost    Int      @default(0) @map("team_post")
+  record      Int      @default(0)
+  interaction Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_limits")
+}
+
+// ========== 层数流水 ==========
+model LayerLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  changeAmount Int      @map("change_amount")
+  reason       String   @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("layer_logs")
+}
+
+// ========== 战绩 ==========
+model Record {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  mode        String   @db.VarChar(50)
+  kdaKill     Int      @default(0) @map("kda_kill")
+  kdaDeath    Int      @default(0) @map("kda_death")
+  kdaAssist   Int      @default(0) @map("kda_assist")
+  description String?  @db.Text
+  imagesJson  String   @default("[]") @map("images_json") @db.Text
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  status      String   @default("active") @db.VarChar(20)
+  rankScore   Float    @default(0) @map("rank_score")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordLikes    Like[]    @relation("RecordLike")
+  recordComments Comment[] @relation("RecordComment")
+
+  @@map("records")
+}
+
+// ========== 组队需求 ==========
+model TeamRequest {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  mode          String    @db.VarChar(50)
+  serverRegion  String?   @map("server_region") @db.VarChar(50)
+  requirement   String?   @db.Text
+  needCount     Int       @default(5) @map("need_count")
+  currentCount  Int       @default(1) @map("current_count")
+  voiceRequired Boolean   @default(false) @map("voice_required")
+  scheduleTime  DateTime? @map("schedule_time") @db.Timestamptz()
+  groupChatId   String?   @map("group_chat_id") @db.VarChar(50)
+  status        String    @default("open") @db.VarChar(20)
+  rankScore     Float     @default(0) @map("rank_score")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications TeamApplication[] @relation("TeamAppTeam")
+
+  @@map("team_requests")
+}
+
+// ========== 动态 ==========
+model Dynamic {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  imageUrl  String?  @map("image_url")
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dynamicLikes    Like[]    @relation("DynamicLike")
+  dynamicComments Comment[] @relation("DynamicComment")
+
+  @@map("dynamics")
+}
+
+// ========== 聊天室 ==========
+model ChatRoom {
+  id         String   @id @default(uuid()) @db.VarChar(50)
+  type       String   @db.VarChar(10)
+  name       String?  @db.VarChar(50)
+  teamReqId  Int?     @map("team_req_id")
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  archiveAt  DateTime? @map("archive_at") @db.Timestamptz()
+
+  members  ChatRoomMember[]
+  messages Message[]
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  id       Int      @id @default(autoincrement())
+  roomId   String   @map("room_id") @db.VarChar(50)
+  userId   Int      @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@map("chat_room_members")
+}
+
+// ========== 消息 ==========
+model Message {
+  id          Int      @id @default(autoincrement())
+  chatRoomId  String   @map("chat_room_id") @db.VarChar(50)
+  senderId    Int      @map("sender_id")
+  messageType String   @default("text") @map("message_type") @db.VarChar(20)
+  content     String   @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  room   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatRoomId, createdAt])
+  @@map("messages")
+}
+
+// ========== 点赞 ==========
+model Like {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  targetType String   @map("target_type") @db.VarChar(20)
+  targetId   Int      @map("target_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  record  Record? @relation("RecordLike", fields: [targetId], references: [id], onDelete: Cascade, map: "likes_record_fk")
+  dynamic Dynamic? @relation("DynamicLike", fields: [targetId], references: [id], onDelete: Cascade, map: "likes_dynamic_fk")
+
+  @@unique([userId, targetType, targetId])
+  @@map("likes")
+}
+
+// ========== 评论 ==========
+model Comment {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  targetType String   @map("target_type") @db.VarChar(20)
+  targetId   Int      @map("target_id")
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  record  Record? @relation("RecordComment", fields: [targetId], references: [id], onDelete: Cascade, map: "comments_record_fk")
+  dynamic Dynamic? @relation("DynamicComment", fields: [targetId], references: [id], onDelete: Cascade, map: "comments_dynamic_fk")
+
+  @@map("comments")
+}
+
+// ========== 举报 ==========
+model Report {
+  id         Int      @id @default(autoincrement())
+  reporterId Int      @map("reporter_id")
+  targetType String   @map("target_type") @db.VarChar(20)
+  targetId   Int      @map("target_id")
+  reason     String   @db.Text
+  status     String   @default("pending") @db.VarChar(20)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+// ========== Refresh Token ==========
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz()
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ========== 关注 ==========
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+// ========== 组队申请 ==========
+model TeamApplication {
+  id          Int      @id @default(autoincrement())
+  teamId      Int      @map("team_id")
+  applicantId Int      @map("applicant_id")
+  chatRoomId  String   @map("chat_room_id") @db.VarChar(50)
+  status      String   @default("pending") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  team      TeamRequest @relation("TeamAppTeam", fields: [teamId], references: [id], onDelete: Cascade)
+  applicant User        @relation("TeamAppApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, applicantId])
+  @@map("team_applications")
+}

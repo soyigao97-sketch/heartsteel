@@ -1,0 +1,7 @@
+{
+  "name": "heartsteel",
+  "scripts": {
+    "build": "cd server && npm install && npx prisma generate && npm run build",
+    "start": "cd server && npx prisma db push && node dist/index.js"
+  }
+}

@@ -7,7 +7,7 @@ export function getSocket(): Socket | null {
   if (!socket) {
     const token = localStorage.getItem('accessToken')
     if (!token) return null
-    const serverUrl = window.location.hostname === 'localhost' ? '' : 'https://heartsteel-production.up.railway.app'
+    const serverUrl = ''
     socket = io(serverUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],

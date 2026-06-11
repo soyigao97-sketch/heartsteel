@@ -1,9 +1,6 @@
 import axios from 'axios';
 
-// 后端地址
-const BASE_URL = window.location.hostname === 'localhost'
-  ? '/api'
-  : 'https://heartsteel-production.up.railway.app/api';
+const BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// 生产环境用完整后端地址，开发环境用 Vite 代理
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const BASE_URL = 'https://heartsteel-production.up.railway.app/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
